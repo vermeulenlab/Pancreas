@@ -67,6 +67,35 @@ run2_YFPplus_object_subset <- RunUMAP(run2_YFPplus_object_subset, dims = 1:10, v
 run2_YFPplus_object_subset <- FindNeighbors(run2_YFPplus_object_subset, dims = 1:30, verbose = FALSE)
 run2_YFPplus_object_subset <- FindClusters(run2_YFPplus_object_subset, verbose = FALSE, resolution = 0.9)
 
+#load and process run3 EYFP+
+run3_YFPplus <- Read10X(data.dir ="run3_YFPplus/filtered_feature_bc_matrix/")
+run3_YFPplus_object= CreateSeuratObject(counts = run3_YFPplus)
+run3_YFPplus_object[["percent.mt"]] <- PercentageFeatureSet(run3_YFPplus_object, pattern = "^mt-")
+run3_YFPplus_object[["Batch"]] <- "run3"
+run3_YFPplus_object[["yfp"]] <- "yfp+"
+
+run3_YFPplus_object_subset <- subset(run3_YFPplus_object, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 20)
+run3_YFPplus_object_subset= SCTransform(object = run3_YFPplus_object_subset,vars.to.regress = c("nFeature_RNA", "percent.mt"))
+
+run3_YFPplus_object_subset <- RunPCA(run3_YFPplus_object_subset, verbose = FALSE)
+run3_YFPplus_object_subset <- RunUMAP(pancreatitis_plus_object_subset, dims = 1:30, verbose = FALSE)
+run3_YFPplus_object_subset <- FindNeighbors(run3_YFPplus_object_subset, dims = 1:30, verbose = FALSE)
+run3_YFPplus_object_subset <- FindClusters(run3_YFPplus_object_subset, verbose = FALSE, resolution = 0.6)
+
+#load and process run3 EYFP-
+run3_YFPminus <- Read10X(data.dir = "run3_YFPminus/filtered_feature_bc_matrix/")
+run3_YFPminus_object= CreateSeuratObject(counts = run3_YFPminus)
+run3_YFPminus_object[["percent.mt"]] <- PercentageFeatureSet(run3_YFPminus_object, pattern = "^mt-")
+run3_YFPminus_object[["Batch"]] <- "run3"
+run3_YFPminus_object[["yfp"]] <- "yfp-"
+
+run3_YFPminus_object_subset <- subset(run3_YFPminus_object, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 20)
+run3_YFPminus_object_subset= SCTransform(object = run3_YFPminus_object_subset,vars.to.regress = c("nFeature_RNA", "percent.mt"))
+
+run3_YFPminus_object_subset <- RunPCA(run3_YFPminus_object_subset, verbose = FALSE)
+run3_YFPminus_object_subset <- RunUMAP(run3_YFPminus_object_subset, dims = 1:30, verbose = FALSE)
+run3_YFPminus_object_subset <- FindNeighbors(run3_YFPminus_object_subset, dims = 1:30, verbose = FALSE)
+run3_YFPminus_object_subset <- FindClusters(run3_YFPminus_object_subset, verbose = FALSE, resolution = 0.9)
 
 #Merge run 1 and run2  - No batch effect detected
 run1_run2_subset=merge(x = run1_YFPminus_object_subset,y = c(run1_YFPplus_object_subset, run2_YFPplus_object_subset, run2_YFPminus_object_subset))
@@ -79,3 +108,24 @@ run1_run2_subset <- FindNeighbors(run1_run2_subset, dims = 1:30, verbose = FALSE
 run1_run2_subset <- FindClusters(run1_run2_subset, verbose = FALSE, resolution = 0.8)
 
 DimPlot(run1_run2_subset, label = TRUE, group.by="Batch")
+
+#merge EYFP- and EYFP- from run3
+run3_subset=merge(x = run3_YFPplus_object_subset,y = run3_YFPminus_object_subset)
+
+run3_subset= SCTransform(object = run3_subset,vars.to.regress = c("nFeature_RNA", "percent.mt"))
+run3_subset <- RunPCA(run3_subset, verbose = FALSE)
+run3_subset <- RunUMAP(run3_subset, dims = 1:30, verbose = FALSE, metric = "euclidean")
+run3_subset <- FindNeighbors(run3_subset, dims = 1:30, verbose = FALSE)
+run3_subset <- FindClusters(run3_subset, verbose = FALSE, resolution = 0.9)
+
+#Merge all the runs
+run1_run2_run3_subset=merge(x = run3_subset,y = run1_run2_subset)
+
+run1_run2_run3_subset= SCTransform(object = run1_run2_run3_subset,vars.to.regress = c("nFeature_RNA", "percent.mt"))
+run1_run2_run3_subset <- RunPCA(run1_run2_run3_subset, verbose = FALSE)
+run1_run2_run3_subset <- RunUMAP(run1_run2_run3_subset, dims = 1:30, verbose = FALSE, metric = "euclidean")
+run1_run2_run3_subset <- FindNeighbors(run1_run2_run3_subset, dims = 1:30, verbose = FALSE)
+run1_run2_run3_subset <- FindClusters(run1_run2_run3_subset, verbose = FALSE, resolution = 0.6)
+
+#Confirm the presence of Batch effect between run1,2 vc run3
+DimPlot(run1_run2_run3_subset, label = TRUE, group.by="Batch") + NoLegend()
