@@ -129,3 +129,29 @@ run1_run2_run3_subset <- FindClusters(run1_run2_run3_subset, verbose = FALSE, re
 
 #Confirm the presence of Batch effect between run1,2 vc run3
 DimPlot(run1_run2_run3_subset, label = TRUE, group.by="Batch") + NoLegend()
+
+#correction of Batch effet
+pancreas.list <- SplitObject(run1_run2_run3_subset, split.by = "Batch")
+
+for (i in 1:length(pancreas.list)) {
+  pancreas.list[[i]] <- NormalizeData(pancreas.list[[i]], verbose = FALSE)
+  pancreas.list[[i]] <- FindVariableFeatures(pancreas.list[[i]], selection.method = "vst", 
+                                             nfeatures = 5000, verbose = FALSE)
+}
+
+reference.list <- pancreas.list[c("run1", "run2", "run3")]
+
+pancreas.anchors <- FindIntegrationAnchors(object.list = reference.list, dims = 1:30,  anchor.features = 5000) #K.filter was necessary due to the low number of cells in at least 1 dataset
+pancreas.integrated <- IntegrateData(anchorset = pancreas.anchors, dims = 1:30)
+DefaultAssay(pancreas.integrated) <- "integrated"
+pancreas.integrated_scaled <- ScaleData(pancreas.integrated, verbose = FALSE)
+#pancreas.integrated_scaled= SCTransform(object = pancreas.integrated,vars.to.regress = c("nFeature_RNA", "percent.mt"))
+pancreas.integrated_scaled <- RunPCA(pancreas.integrated_scaled, verbose = FALSE)
+pancreas.integrated_scaled <- RunUMAP(pancreas.integrated_scaled, dims = 1:30, verbose = FALSE)
+pancreas.integrated_scaled <- FindNeighbors(pancreas.integrated_scaled, dims = 1:30, verbose = FALSE)
+pancreas.integrated_scaled <- FindClusters(pancreas.integrated_scaled, verbose = FALSE, resolution = 0.9)
+
+#Confirm that the data is free of Batch effect
+DimPlot(pancreas.integrated_scaled, label = TRUE, group.by="Batch")
+
+DimPlot(pancreas.integrated_scaled, label = TRUE,group.by="yfp",pt.size = 0.3, cols = c("#666666", "#FFCC29")) + ylim (c(-15,15)) + xlim(c(-15,15))
